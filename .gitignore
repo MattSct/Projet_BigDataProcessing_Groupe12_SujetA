@@ -1,0 +1,6 @@
+﻿# fichiers exclus du depot
+projet/ecoutes_historique.tsv
+projet/userid-timestamp-artid-artname-traid-traname.tsv
+**/.ipynb_checkpoints/
+__pycache__/
+*.pyc

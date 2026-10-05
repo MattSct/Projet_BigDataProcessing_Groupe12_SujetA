@@ -1,0 +1,13 @@
+services:
+  spark:
+    build: ./spark
+    image: projet-spark:1.0
+    container_name: spark
+    restart: always
+    ports:
+      - 8888:8888
+      - 4040:4040
+    environment:
+      JUPYTER_TOKEN: bigdata
+    volumes:
+      - ./projet:/home/jovyan/work
