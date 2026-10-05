@@ -21,7 +21,7 @@ Le schéma complet est fourni à part (`Schema_Architecture_Groupe12_SujetA`).
 |---|---|---|
 | 0. Données | Tirage des 100 utilisateurs et coupure historique / flux | `projet/tirage_au_sort.py` |
 | 1. HDFS | Stockage de l'historique brut (archive) | `docker-compose.yml`, `hadoop.env` (commandes ci-dessous) |
-| 2. MongoDB | Catalogue + collection courante (CRUD) | `mongo.yml`, `projet/generer_catalogue.py`, `projet/catalogue.json`, `projet/crud_playlists.js` |
+| 2. MongoDB | Catalogue + collection courante (CRUD) | `mongo.yml`, `projet/generer_catalogue.py`, `projet/catalogue.json` (CRUD fait en direct dans mongosh, voir étape 3) |
 | 3. Spark batch | Statistiques historiques (top artistes, top musiques, écoutes par heure) | `projet/spark_batch.py` |
 | 4. Kafka | Ingestion du flux d'écoutes (topic `ecoutes`) | `kafka.yml`, `projet/producteur_ecoutes.py` |
 | 5. Spark Streaming | Agrégation sur fenêtres glissantes, écriture dans MongoDB | `projet/spark_streaming.py` |
@@ -78,15 +78,31 @@ docker exec namenode bash -c "hdfs dfs -cat /data/lastfm/raw/ecoutes_historique.
 
 On doit obtenir 1 530 543 lignes.
 
-### 3. Importer le catalogue et lancer le CRUD MongoDB
+### 3. Importer le catalogue et tester le CRUD MongoDB
 
 ```
 docker cp projet/catalogue.json mongo:/tmp/catalogue.json
 docker exec mongo mongoimport --db streaming_musique --collection catalogue --jsonArray --drop --file /tmp/catalogue.json
-
-docker cp projet/crud_playlists.js mongo:/tmp/
-docker exec mongo mongosh streaming_musique --file /tmp/crud_playlists.js
 ```
+
+Le CRUD sur la collection courante `playlists` est démontré en direct pendant la soutenance, directement dans le shell MongoDB :
+
+```
+docker exec -it mongo mongosh streaming_musique
+```
+
+Puis, dans mongosh :
+
+```
+db.playlists.insertOne({ _id: "pl_demo", user_id: "user_000007", nom: "Playlist demo", musiques: ["mariah carey||so lonely"], date_creation: new Date() })
+db.playlists.find({ user_id: "user_000007" })
+db.playlists.updateOne({ _id: "pl_demo" }, { $push: { musiques: "eagles||hotel california" } })
+db.playlists.findOne({ _id: "pl_demo" })
+db.playlists.deleteOne({ _id: "pl_demo" })
+exit
+```
+
+On crée une playlist pour un utilisateur, on la lit, on y ajoute un titre que l'ALS lui a recommandé, puis on la supprime.
 
 ### 4. Traitements batch (statistiques + recommandations)
 
@@ -137,7 +153,7 @@ docker exec mongo mongosh streaming_musique --quiet --eval "db.getCollectionName
 | Collection | Écrite par | Contenu |
 |---|---|---|
 | `catalogue` | mongoimport | une musique distincte par document |
-| `playlists` | CRUD mongosh | collection courante de l'application |
+| `playlists` | CRUD en direct dans mongosh | collection courante de l'application |
 | `stats_historiques` | `spark_batch.py` | top artistes, top musiques, écoutes par heure |
 | `agregats_temps_reel` | `spark_streaming.py` | nombre d'écoutes par musique et par fenêtre de 5 min |
 | `recommandations` | `spark_als.py` | top 10 par utilisateur, avec score et date de calcul |
