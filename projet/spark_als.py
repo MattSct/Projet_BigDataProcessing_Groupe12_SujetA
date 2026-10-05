@@ -56,7 +56,7 @@ als = ALS(userCol="user_idx", itemCol="musique_idx", ratingCol="note",
 modele = als.fit(donnees)
 print("Modèle ALS entraîné")
 
-recos = (modele.recommendForAllUsers(NB_RECOS + 50)
+recos = (modele.recommendForAllUsers(NB_RECOS + 1000)
          .select("user_idx", F.explode("recommendations").alias("r"))
          .select("user_idx",
                  F.col("r.musique_idx").alias("musique_idx"),
